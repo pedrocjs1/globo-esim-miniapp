@@ -37,6 +37,23 @@ type AiraloResponse = {
   plans: AiraloPlanFromApi[];
 };
 
+export type AiraloOrder = {
+  id: number | string | null;
+  code: string | null;
+  packageId: string | null;
+  packageName: string | null;
+  data: string | null;
+  validityDays: number | null;
+  price: number | null;
+  currency: string | null;
+  manualInstallationHtml: string | null;
+  qrInstallationHtml: string | null;
+  installationGuideUrl: string | null;
+  qrCodeUrl: string | null;
+  lpa: string | null;
+  directAppleInstallationUrl: string | null;
+};
+
 // Países que vamos a soportar al principio (podés sumar más)
 const COUNTRY_OPTIONS = [
   { code: 'AR', label: 'Argentina' },
@@ -62,6 +79,13 @@ const App: React.FC = () => {
   const [plans, setPlans] = useState<EsimPlan[]>([]);
   const [plansLoading, setPlansLoading] = useState<boolean>(true);
   const [plansError, setPlansError] = useState<string | null>(null);
+
+  // 🔹 Email y orden de Airalo
+  const [userEmail, setUserEmail] = useState<string>('');
+  const [order, setOrder] = useState<AiraloOrder | null>(null);
+  const [orderStatus, setOrderStatus] =
+    useState<'idle' | 'creating' | 'error'>('idle');
+  const [orderError, setOrderError] = useState<string | null>(null);
 
   const isRealWebView = isWebView();
   const insideLemon = DEV_FORCE_WEBVIEW || isRealWebView;
@@ -145,19 +169,57 @@ const App: React.FC = () => {
     void loadPlans();
   }, [destinationCode]);
 
+  // ---------- Crear orden en Airalo (backend) ----------
+  const createAiraloOrder = async (packageId: string, email: string) => {
+    try {
+      setOrderStatus('creating');
+      setOrderError(null);
+
+      const res = await fetch('http://localhost:4000/api/airalo/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ packageId, email }),
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => null);
+        throw new Error(
+          errJson?.error || 'No se pudo crear la orden en Airalo.',
+        );
+      }
+
+      const json = await res.json();
+      setOrder(json.order as AiraloOrder);
+      setOrderStatus('idle');
+    } catch (e: any) {
+      console.error('Error al crear la orden:', e);
+      setOrderStatus('error');
+      setOrderError(e?.message ?? 'Error al crear la orden.');
+    }
+  };
+
   // ---------- Pago ----------
   const handlePay = async () => {
-    if (!selectedPlan || !wallet) return;
+    if (!selectedPlan || !wallet || !userEmail) return;
 
     setTxStatus('pending');
     setTxHash(null);
     setTxError(null);
+    setOrder(null);
+    setOrderStatus('idle');
+    setOrderError(null);
 
     // Simulación cuando estamos desarrollando fuera del WebView real
     if (!isRealWebView && DEV_FORCE_WEBVIEW) {
-      setTimeout(() => {
+      setTimeout(async () => {
+        const fakeHash = '0xFAKE_TX_HASH_DEV_123456';
         setTxStatus('success');
-        setTxHash('0xFAKE_TX_HASH_DEV_123456');
+        setTxHash(fakeHash);
+
+        // Después del "pago", creamos la orden en Airalo
+        await createAiraloOrder(selectedPlan.id, userEmail);
       }, 1200);
       return;
     }
@@ -171,6 +233,8 @@ const App: React.FC = () => {
       if (result.result === TransactionResult.SUCCESS) {
         setTxStatus('success');
         setTxHash(result.data.txHash);
+
+        await createAiraloOrder(selectedPlan.id, userEmail);
       } else if (result.result === TransactionResult.FAILED) {
         setTxStatus('error');
         setTxError(
@@ -215,11 +279,11 @@ const App: React.FC = () => {
   }
 
   // ---------- Pantalla de éxito ----------
-  if (txStatus === 'success' && txHash && selectedPlan) {
+  if (txStatus === 'success' && txHash && selectedPlan && order) {
     return (
       <div style={styles.pageDark}>
         <div style={styles.card}>
-          <SuccessView txHash={txHash} planName={selectedPlan.name} />
+          <SuccessView txHash={txHash} planName={selectedPlan.name} order={order} />
         </div>
       </div>
     );
@@ -293,7 +357,34 @@ const App: React.FC = () => {
           )}
         </section>
 
-        {/* 🔹 Selector de destino */}
+        {/* Email del viajero */}
+        <section style={styles.walletBox}>
+          <label style={{ fontSize: 13, color: '#e5e7eb', display: 'block' }}>
+            📧 ¿A qué email te mandamos tu eSIM?
+          </label>
+          <input
+            type="email"
+            placeholder="tuemail@ejemplo.com"
+            value={userEmail}
+            onChange={(e) => setUserEmail(e.target.value)}
+            style={{
+              marginTop: 6,
+              width: '100%',
+              padding: '8px 10px',
+              borderRadius: 10,
+              border: '1px solid rgba(148,163,184,0.5)',
+              background: '#020617',
+              color: '#e5e7eb',
+              fontSize: 14,
+            }}
+          />
+          <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>
+            Usaremos este correo para enviarte el QR y las instrucciones de
+            instalación.
+          </p>
+        </section>
+
+        {/* Selector de destino */}
         <section style={styles.destinationBox}>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <div>
@@ -323,14 +414,10 @@ const App: React.FC = () => {
         </section>
 
         {/* Planes */}
-        <h2 style={styles.sectionTitle}>
-          Planes para {destinationName}
-        </h2>
+        <h2 style={styles.sectionTitle}>Planes para {destinationName}</h2>
 
         {plansLoading && (
-          <p style={{ ...styles.text, fontStyle: 'italic' }}>
-            Cargando planes...
-          </p>
+          <p style={{ ...styles.text, fontStyle: 'italic' }}>Cargando planes...</p>
         )}
 
         {!plansLoading && plansError && (
@@ -377,17 +464,33 @@ const App: React.FC = () => {
           style={{
             ...styles.payButton,
             opacity:
-              !selectedPlan || !wallet || txStatus === 'pending' ? 0.6 : 1,
+              !selectedPlan ||
+              !wallet ||
+              !userEmail ||
+              txStatus === 'pending' ||
+              orderStatus === 'creating'
+                ? 0.6
+                : 1,
             cursor:
-              !selectedPlan || !wallet || txStatus === 'pending'
+              !selectedPlan ||
+              !wallet ||
+              !userEmail ||
+              txStatus === 'pending' ||
+              orderStatus === 'creating'
                 ? 'not-allowed'
                 : 'pointer',
           }}
-          disabled={!selectedPlan || !wallet || txStatus === 'pending'}
+          disabled={
+            !selectedPlan ||
+            !wallet ||
+            !userEmail ||
+            txStatus === 'pending' ||
+            orderStatus === 'creating'
+          }
           onClick={handlePay}
         >
-          {txStatus === 'pending'
-            ? 'Procesando pago...'
+          {txStatus === 'pending' || orderStatus === 'creating'
+            ? 'Procesando pago y creando tu eSIM...'
             : selectedPlan
             ? `Pagar ${selectedPlan.priceUSDC} USDC`
             : 'Elegí un plan para continuar'}
@@ -400,6 +503,13 @@ const App: React.FC = () => {
               ❌ Hubo un problema con el pago.
               <br />
               <span style={{ fontSize: 11 }}>{txError}</span>
+            </p>
+          )}
+          {orderStatus === 'error' && (
+            <p style={{ color: '#fecaca', fontSize: 13 }}>
+              ❌ El pago se acreditó, pero hubo un problema creando tu eSIM.
+              <br />
+              <span style={{ fontSize: 11 }}>{orderError}</span>
             </p>
           )}
         </div>

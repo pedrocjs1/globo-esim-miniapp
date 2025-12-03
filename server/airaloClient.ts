@@ -1,6 +1,8 @@
+// server/airaloClient.ts
 import axios from "axios";
 import FormData from "form-data";
 import dotenv from "dotenv";
+
 dotenv.config();
 
 const AIRALO_BASE =
@@ -62,16 +64,21 @@ async function getAccessToken(): Promise<string> {
   }
 }
 
-
-/**
- * Cliente genérico para hacer requests a Airalo con token automático.
- */
-export async function airaloRequest<T = any>(config: {
+// ---------- Tipo de config para las requests ----------
+export type AiraloRequestConfig<T = any> = {
   method: "GET" | "POST";
   url: string;
   params?: any;
   data?: any;
-}) {
+  headers?: Record<string, any>; // 👈 ahora aceptamos headers custom
+};
+
+/**
+ * Cliente genérico para hacer requests a Airalo con token automático.
+ */
+export async function airaloRequest<T = any>(
+  config: AiraloRequestConfig<T>
+): Promise<T> {
   const token = await getAccessToken();
 
   const res = await axios({
@@ -82,6 +89,7 @@ export async function airaloRequest<T = any>(config: {
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: "application/json",
+      ...(config.headers || {}), // 👈 mergeamos headers pasados (ej: form.getHeaders())
     },
   });
 
