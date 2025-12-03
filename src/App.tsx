@@ -16,41 +16,52 @@ type EsimPlan = {
   id: string;
   name: string;
   description: string;
-  priceUSDC: string;
+  priceUSDC: string; // lo usamos como string para deposit()
 };
 
 type TxStatus = 'idle' | 'pending' | 'success' | 'error';
 
-// Planes de ejemplo (después los reemplazamos por los de Airalo)
-const PLANS: EsimPlan[] = [
-  {
-    id: 'eu-5gb-7d',
-    name: 'Europa 5 GB / 7 días',
-    description: 'Ideal para escapadas cortas por Europa.',
-    priceUSDC: '20',
-  },
-  {
-    id: 'eu-10gb-15d',
-    name: 'Europa 10 GB / 15 días',
-    description: 'Perfecto para viajes de hasta 2 semanas.',
-    priceUSDC: '30',
-  },
-  {
-    id: 'us-5gb-7d',
-    name: 'USA 5 GB / 7 días',
-    description: 'Conectividad rápida en EE.UU.',
-    priceUSDC: '18',
-  },
+type AiraloPlanFromApi = {
+  id: string;
+  title: string;
+  days: number;
+  isUnlimited: boolean;
+  data: string;
+  priceUsd: number;
+  netPriceUsd: number;
+};
+
+type AiraloResponse = {
+  country: { code: string; name: string; flagImage: string | null };
+  operator: { id: number; name: string; image: string | null };
+  plans: AiraloPlanFromApi[];
+};
+
+// Países que vamos a soportar al principio (podés sumar más)
+const COUNTRY_OPTIONS = [
+  { code: 'AR', label: 'Argentina' },
+  { code: 'US', label: 'Estados Unidos' },
+  { code: 'ES', label: 'España' },
+  { code: 'BR', label: 'Brasil' },
+  { code: 'CL', label: 'Chile' },
+  { code: 'MX', label: 'México' },
 ];
 
 const App: React.FC = () => {
   const [wallet, setWallet] = useState<string | undefined>(undefined);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
-  const [selectedPlan, setSelectedPlan] = useState<EsimPlan | null>(null);
 
+  const [selectedPlan, setSelectedPlan] = useState<EsimPlan | null>(null);
   const [txStatus, setTxStatus] = useState<TxStatus>('idle');
   const [txHash, setTxHash] = useState<string | null>(null);
   const [txError, setTxError] = useState<string | null>(null);
+
+  // 🔹 Estado para destino y planes de Airalo
+  const [destinationCode, setDestinationCode] = useState<string>('AR');
+  const [destinationName, setDestinationName] = useState<string>('Argentina');
+  const [plans, setPlans] = useState<EsimPlan[]>([]);
+  const [plansLoading, setPlansLoading] = useState<boolean>(true);
+  const [plansError, setPlansError] = useState<string | null>(null);
 
   const isRealWebView = isWebView();
   const insideLemon = DEV_FORCE_WEBVIEW || isRealWebView;
@@ -86,6 +97,54 @@ const App: React.FC = () => {
     }
   }, [insideLemon, isRealWebView]);
 
+  // ---------- Cargar planes desde tu backend (Airalo) ----------
+  useEffect(() => {
+    const loadPlans = async () => {
+      try {
+        setPlansLoading(true);
+        setPlansError(null);
+        setSelectedPlan(null);
+
+        const res = await fetch(
+          `http://localhost:4000/api/airalo/packages?country=${destinationCode}`,
+        );
+
+        if (!res.ok) {
+          throw new Error('Error al cargar los planes');
+        }
+
+        const data: AiraloResponse = await res.json();
+
+        setDestinationName(data.country?.name ?? destinationCode);
+
+        const mappedPlans: EsimPlan[] =
+          data.plans?.map((p) => ({
+            id: p.id,
+            name: p.title,
+            description: `${p.isUnlimited ? 'Datos ilimitados' : p.data} · ${
+              p.days
+            } días`,
+            priceUSDC: String(p.priceUsd),
+          })) ?? [];
+
+        setPlans(mappedPlans);
+        if (mappedPlans.length > 0) {
+          setSelectedPlan(mappedPlans[0]);
+        }
+      } catch (err) {
+        console.error(err);
+        setPlansError(
+          'No pudimos cargar los planes para este destino. Probá de nuevo o elegí otro país.',
+        );
+        setPlans([]);
+      } finally {
+        setPlansLoading(false);
+      }
+    };
+
+    void loadPlans();
+  }, [destinationCode]);
+
   // ---------- Pago ----------
   const handlePay = async () => {
     if (!selectedPlan || !wallet) return;
@@ -114,7 +173,9 @@ const App: React.FC = () => {
         setTxHash(result.data.txHash);
       } else if (result.result === TransactionResult.FAILED) {
         setTxStatus('error');
-        setTxError(result.error.message ?? 'Ocurrió un error al procesar el pago.');
+        setTxError(
+          result.error.message ?? 'Ocurrió un error al procesar el pago.',
+        );
       } else {
         // CANCELLED
         setTxStatus('idle');
@@ -188,7 +249,7 @@ const App: React.FC = () => {
           <div style={styles.stepper}>
             <div style={styles.stepActive}>
               <span style={styles.stepNumber}>1</span>
-              <span style={styles.stepLabel}>Elegí tu plan</span>
+              <span style={styles.stepLabel}>Elegí tu destino y plan</span>
             </div>
             <div style={styles.stepDivider} />
             <div style={styles.step}>
@@ -232,40 +293,91 @@ const App: React.FC = () => {
           )}
         </section>
 
+        {/* 🔹 Selector de destino */}
+        <section style={styles.destinationBox}>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <div>
+              <p style={styles.sectionTitle}>¿A dónde viajás?</p>
+              <p style={{ ...styles.text, marginBottom: 0, fontSize: 12 }}>
+                Elegí el país de destino para ver los planes disponibles.
+              </p>
+            </div>
+          </div>
+
+          <select
+            value={destinationCode}
+            onChange={(e) => {
+              const value = e.target.value;
+              setDestinationCode(value);
+              const selected = COUNTRY_OPTIONS.find((c) => c.code === value);
+              setDestinationName(selected?.label ?? value);
+            }}
+            style={styles.destinationSelect}
+          >
+            {COUNTRY_OPTIONS.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </section>
+
         {/* Planes */}
-        <h2 style={styles.sectionTitle}>Elegí tu plan de datos</h2>
+        <h2 style={styles.sectionTitle}>
+          Planes para {destinationName}
+        </h2>
+
+        {plansLoading && (
+          <p style={{ ...styles.text, fontStyle: 'italic' }}>
+            Cargando planes...
+          </p>
+        )}
+
+        {!plansLoading && plansError && (
+          <p style={{ ...styles.text, color: '#fecaca' }}>{plansError}</p>
+        )}
+
+        {!plansLoading && !plansError && plans.length === 0 && (
+          <p style={{ ...styles.text, fontStyle: 'italic' }}>
+            No encontramos planes para este destino.
+          </p>
+        )}
+
         <div style={styles.planList}>
-          {PLANS.map((plan) => {
-            const isSelected = selectedPlan?.id === plan.id;
-            return (
-              <button
-                key={plan.id}
-                style={{
-                  ...styles.planButton,
-                  borderColor: isSelected ? '#4f46e5' : '#1f2937',
-                  boxShadow: isSelected
-                    ? '0 0 0 1px rgba(79,70,229,0.6)'
-                    : '0 0 0 1px rgba(15,23,42,0.6)',
-                  background:
-                    'radial-gradient(circle at top left, #0f172a, #020617)',
-                }}
-                onClick={() => setSelectedPlan(plan)}
-              >
-                <div style={styles.planHeader}>
-                  <span style={styles.planName}>{plan.name}</span>
-                  <span style={styles.planPrice}>{plan.priceUSDC} USDC</span>
-                </div>
-                <p style={styles.planDescription}>{plan.description}</p>
-              </button>
-            );
-          })}
+          {!plansLoading &&
+            !plansError &&
+            plans.map((plan) => {
+              const isSelected = selectedPlan?.id === plan.id;
+              return (
+                <button
+                  key={plan.id}
+                  style={{
+                    ...styles.planButton,
+                    borderColor: isSelected ? '#4f46e5' : '#1f2937',
+                    boxShadow: isSelected
+                      ? '0 0 0 1px rgba(79,70,229,0.6)'
+                      : '0 0 0 1px rgba(15,23,42,0.6)',
+                    background:
+                      'radial-gradient(circle at top left, #0f172a, #020617)',
+                  }}
+                  onClick={() => setSelectedPlan(plan)}
+                >
+                  <div style={styles.planHeader}>
+                    <span style={styles.planName}>{plan.name}</span>
+                    <span style={styles.planPrice}>{plan.priceUSDC} USDC</span>
+                  </div>
+                  <p style={styles.planDescription}>{plan.description}</p>
+                </button>
+              );
+            })}
         </div>
 
         {/* Botón de pago */}
         <button
           style={{
             ...styles.payButton,
-            opacity: !selectedPlan || !wallet || txStatus === 'pending' ? 0.6 : 1,
+            opacity:
+              !selectedPlan || !wallet || txStatus === 'pending' ? 0.6 : 1,
             cursor:
               !selectedPlan || !wallet || txStatus === 'pending'
                 ? 'not-allowed'
@@ -433,6 +545,24 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginBottom: 8,
     color: '#e5e7eb',
     fontWeight: 500,
+  },
+  destinationBox: {
+    marginBottom: 14,
+    padding: 10,
+    borderRadius: 16,
+    background: 'rgba(15,23,42,0.9)',
+    border: '1px solid rgba(31,41,55,0.9)',
+  },
+  destinationSelect: {
+    marginTop: 6,
+    width: '100%',
+    padding: '8px 10px',
+    borderRadius: 999,
+    border: '1px solid rgba(55,65,81,1)',
+    backgroundColor: '#020617',
+    color: '#e5e7eb',
+    fontSize: 13,
+    outline: 'none',
   },
   planList: {
     display: 'flex',
