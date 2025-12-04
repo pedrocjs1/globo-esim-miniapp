@@ -50,3 +50,71 @@ La app está construida con **React + TypeScript + Vite**, integrada al SDK ofic
 /server → Node + Express + Axios (Airalo Partner API client)
 
 
+### Frontend
+- React + TS
+- Vite  
+- CSS-in-JS
+- Lemon Mini-App SDK (`authenticate`, `deposit`, `isWebView`)
+
+### Backend
+- Express.js  
+- Axios  
+- Módulo de token caching para Airalo  
+- Endpoints:
+  - `GET /api/airalo/packages`
+  - `POST /api/airalo/orders`
+
+---
+
+## 🔐 Integraciones externas
+
+### 🟢 Lemon Cash Mini-Apps  
+- Documentación: https://lemoncash.mintlify.app  
+- Se utiliza para:
+  - Autenticación del usuario
+  - Verificación del entorno (WebView)
+  - Pago en USDC
+
+### 🟣 Airalo Partner API  
+- Documentación: https://partners-api.airalo.com  
+- Se utiliza para:
+  - Obtener token
+  - Listar planes
+  - Crear órdenes de eSIM
+
+---
+
+## 📸 Screenshots (placeholder)
+
+
+---
+
+## 🛠️ Scripts de desarrollo
+
+### Frontend
+```bash
+npm install
+npm run dev
+npm run build
+
+
+
+
+### Frontend
+npm install
+npm run dev
+npm start
+
+
+📦 Variables de entorno
+Frontend
+VITE_LEMON_ENV=dev
+VITE_API_BASE=http://localhost:4000
+
+Backend
+AIRALO_CLIENT_ID=
+AIRALO_CLIENT_SECRET=
+AIRALO_API_BASE=https://partners-api.airalo.com
+AIRALO_BRAND_NAME=
+AIRALO_DEFAULT_COPY_EMAIL=
+PORT=4000
