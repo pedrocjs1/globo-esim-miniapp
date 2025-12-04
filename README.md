@@ -1,73 +1,52 @@
-# React + TypeScript + Vite
+# 🌍 Globo eSIM — Mini-App para Lemon Cash  
+**Venta de eSIM para viajeros, pagadas con USDC**
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Globo eSIM es una **mini-app integrada al ecosistema de Lemon Cash** que permite a cualquier usuario comprar eSIM internacionales en más de **200 países**, con pago directo en **USDC** y activación instantánea.
 
-Currently, two official plugins are available:
+La app está construida con **React + TypeScript + Vite**, integrada al SDK oficial de Lemon, y conectada a la **Airalo Partner API** para la provisión real de eSIMs.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## React Compiler
+## 🚀 Características principales
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 🟣 1. Integración completa con Lemon Mini-Apps
+- Autenticación de usuario con `authenticate()`
+- Detección de WebView con `isWebView()`
+- Pago simulado en USDC mediante `deposit()`
+- UI optimizada para WebView en iOS/Android
 
-## Expanding the ESLint configuration
+### 🟢 2. Integración Airalo Partner API (Sandbox)
+- Obtención de planes por país  
+- Creación de órdenes de eSIM  
+- Recepción de:
+  - QR de instalación  
+  - Código LPA (activation code)  
+  - Enlace automático de instalación en iPhone  
+  - Guía de instalación paso a paso  
+- Todo en **modo Sandbox**, sin activar eSIMs reales
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 🔵 3. Flujo completo para el usuario final
+1. Seleccionar país de destino  
+2. Elegir un plan  
+3. Pagar con USDC en Lemon  
+4. Recibir la eSIM lista para activar  
+5. Instalar mediante:
+   - QR  
+   - Instalación automática en iPhone  
+   - Código LPA manual  
+6. Acceso a guía integrada para iPhone y Android
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### 💎 4. UI moderna, clara y responsiva
+- Paleta personalizada de Globo eSIM  
+- Ventanas modales limpias para guías  
+- Estilo profesional tipo “mini-app oficial”  
+- Totalmente responsive para Lemon WebView
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+---
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## 🏗️ Arquitectura
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+/frontend → React + TypeScript + Vite (Mini-App Lemon)
+/server → Node + Express + Axios (Airalo Partner API client)
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
