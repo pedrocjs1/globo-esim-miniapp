@@ -371,6 +371,7 @@ const App: React.FC = () => {
               marginTop: 6,
               width: '100%',
               padding: '8px 10px',
+              boxSizing: "border-box",
               borderRadius: 10,
               border: '1px solid rgba(148,163,184,0.5)',
               background: '#020617',
