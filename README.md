@@ -84,8 +84,23 @@ La app está construida con **React + TypeScript + Vite**, integrada al SDK ofic
 
 ---
 
-## 📸 Screenshots (placeholder)
 
+
+## 📱 Screenshots de la Mini-App Globo eSIM
+
+A continuación se muestran vistas reales de la mini-app funcionando en modo sandbox con Airalo.
+
+---
+
+
+### 🌍 Selección de país y compra del e-sim
+<img src="./assets/screenshots/screenshot1.png" width="350"/>
+
+### 🎉 eSIM generada (QR + LPA)
+<img src="./assets/screenshots/screenshot2.png" width="350"/>
+
+### 📖 Instrucciones (QR + LPA)
+<img src="./assets/screenshots/screenshot3.png" width="350"/>
 
 ---
 
