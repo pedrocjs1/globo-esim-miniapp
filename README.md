@@ -102,6 +102,8 @@ A continuación se muestran vistas reales de la mini-app funcionando en modo san
 ### 📖 Instrucciones (QR + LPA)
 <img src="./public/screenshots/screenshot3.png" width="350"/>
 
+### 📖 Instrucciones por email 
+<img src="./public/screenshots/emailconfirm.png.jpg" width="350"/>
 ---
 
 ## 🛠️ Scripts de desarrollo
