@@ -94,13 +94,13 @@ A continuación se muestran vistas reales de la mini-app funcionando en modo san
 
 
 ### 🌍 Selección de país y compra del e-sim
-<img src="./assets/screenshots/screenshot1.png" width="350"/>
+<img src="./public/screenshots/screenshot1.png" width="350"/>
 
 ### 🎉 eSIM generada (QR + LPA)
-<img src="./assets/screenshots/screenshot2.png" width="350"/>
+<img src="./public/screenshots/screenshot2.png" width="350"/>
 
 ### 📖 Instrucciones (QR + LPA)
-<img src="./assets/screenshots/screenshot3.png" width="350"/>
+<img src="./public/screenshots/screenshot3.png" width="350"/>
 
 ---
 
